@@ -1,23 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Droplet, Map, Store, CheckCircle, AlertCircle, 
+import {
+  Search, Droplet, Map, Store, CheckCircle, AlertCircle,
   CreditCard, Printer, ChevronRight, User, Home, ArrowLeft,
   Clock, Edit2, Plus, Tag, ChevronDown, Trash2, Box, Info,
   DollarSign
 } from 'lucide-react';
 import { ContribuyentePerfil, DeudaItem, Predio, TomaAgua, LicenciaComercio } from '../types';
 
-const CATALOGO_CONCEPTOS = [
-  { id: 1, area: 'agua', nombre: 'Mensualidad Abastecimiento de Agua', precio: 150.00 },
-  { id: 2, area: 'agua', nombre: 'Anualidad Abastecimiento de Agua', precio: 1600.00 },
-  { id: 3, area: 'agua', nombre: 'Conexión de Agua Potable (Contrato)', precio: 2500.00 },
-  { id: 4, area: 'agua', nombre: 'Reconexión de Servicio', precio: 300.00 },
-  { id: 5, area: 'catastro', nombre: 'Impuesto Predial Anual', precio: 1200.00 },
-  { id: 6, area: 'catastro', nombre: 'Certificado de Valor Catastral', precio: 150.00 },
-  { id: 7, area: 'comercio', nombre: 'Refrendo de Licencia Anual', precio: 850.00 },
-  { id: 8, area: 'comercio', nombre: 'Permiso de Anuncios', precio: 300.00 },
-];
+import { api } from '../services/api';
 
 interface ModuloPagoProps {
   tipo: 'agua' | 'catastro' | 'comercio';
@@ -26,9 +17,9 @@ interface ModuloPagoProps {
 const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const [query, setQuery] = useState('');
   const [perfil, setPerfil] = useState<ContribuyentePerfil | null>(null);
-  const [cargosEnSesion, setCargosEnSesion] = useState<(DeudaItem & { activoRef?: string })[]>([]);
+  const [cargosEnSesion, setCargosEnSesion] = useState<(DeudaItem & { activoRef?: string, concepto_id?: number })[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   const [conceptoSeleccionadoId, setConceptoSeleccionadoId] = useState<string>("");
   const [montoSugerido, setMontoSugerido] = useState<string>("0.00");
   const [activoSeleccionadoId, setActivoSeleccionadoId] = useState<string>("general");
@@ -40,35 +31,34 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   };
 
   const { title, icon: Icon, color, bg, accent } = config[tipo];
-  const conceptosDisponibles = CATALOGO_CONCEPTOS.filter(c => c.area === tipo);
+  const [conceptosDisponibles, setConceptosDisponibles] = useState<any[]>([]);
 
-  const handleSearch = () => {
+  useEffect(() => {
+    const fetchConceptos = async () => {
+      try {
+        const result = await api.getConceptosPorArea(tipo);
+        setConceptosDisponibles(result.conceptos || []);
+      } catch (err) {
+        console.error("Error cargando conceptos", err);
+      }
+    };
+    fetchConceptos();
+  }, [tipo]);
+
+  const handleSearch = async () => {
     if (!query) return;
     setLoading(true);
     setCargosEnSesion([]);
-    
-    setTimeout(() => {
-      setPerfil({
-        id: 1,
-        rfc: 'GOMR800101XYZ',
-        nombre_completo: 'Roberto Gómez Martínez',
-        direccion_fiscal: 'Calle Mina #45, Centro',
-        telefono: '7571234567',
-        email: 'roberto@email.com',
-        predios: [
-          { id: 10, clave_catastral: '001-002-045', direccion_predio: 'Calle Mina #45', valor_catastral: 850000, tipo_predio: 'urbano', deudas: [] },
-          { id: 11, clave_catastral: '001-005-122', direccion_predio: 'Av. Hidalgo #12', valor_catastral: 1450000, tipo_predio: 'urbano', deudas: [] }
-        ],
-        tomas: [
-          { id: 20, numero_contrato: 'W-12345', direccion_toma: 'Calle Mina #45', tipo_servicio: 'domestico', deudas: [] },
-          { id: 21, numero_contrato: 'W-54321', direccion_toma: 'Av. Hidalgo #12', tipo_servicio: 'comercial', deudas: [] }
-        ],
-        licencias: [
-          { id: 30, numero_licencia: 'LIC-2025-001', nombre_negocio: 'Abarrotes Roberto', giro: 'Abarrotes', direccion_local: 'Calle Mina #45', deudas: [] }
-        ]
-      });
+
+    try {
+      const resp = await api.getContribuyenteCompleto(query);
+      setPerfil(resp.perfil);
+    } catch (err: any) {
+      alert("Contribuyente no encontrado.");
+      setPerfil(null);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   const handleConceptoSelect = (id: string) => {
@@ -82,16 +72,17 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const addSelectedConcept = () => {
     if (!perfil || !conceptoSeleccionadoId) return;
 
-    const conceptoObj = CATALOGO_CONCEPTOS.find(c => c.id === parseInt(conceptoSeleccionadoId));
+    const conceptoObj = conceptosDisponibles.find(c => c.id === parseInt(conceptoSeleccionadoId));
     if (!conceptoObj) return;
 
-    const nuevoCargo: DeudaItem & { activoRef?: string } = {
+    const nuevoCargo: DeudaItem & { activoRef?: string, concepto_id?: number } = {
       id: Math.floor(Math.random() * 100000),
       descripcion: conceptoObj.nombre,
       monto: parseFloat(montoSugerido) || 0,
       estado: 'pendiente',
       fecha_vencimiento: new Date().toISOString().split('T')[0],
-      activoRef: activoSeleccionadoId !== 'general' ? activoSeleccionadoId : undefined
+      activoRef: activoSeleccionadoId !== 'general' ? activoSeleccionadoId : undefined,
+      concepto_id: conceptoObj.id
     };
 
     setCargosEnSesion([...cargosEnSesion, nuevoCargo]);
@@ -107,13 +98,14 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const autoCargarCargosActivo = (ref: string) => {
     const conceptoBase = conceptosDisponibles[0];
     if (conceptoBase) {
-      const nuevoCargo: DeudaItem & { activoRef?: string } = {
+      const nuevoCargo: DeudaItem & { activoRef?: string, concepto_id?: number } = {
         id: Math.floor(Math.random() * 100000),
         descripcion: conceptoBase.nombre,
         monto: conceptoBase.precio,
         estado: 'pendiente',
         fecha_vencimiento: new Date().toISOString().split('T')[0],
-        activoRef: ref
+        activoRef: ref,
+        concepto_id: conceptoBase.id
       };
       setCargosEnSesion([...cargosEnSesion, nuevoCargo]);
       setActivoSeleccionadoId(ref);
@@ -125,6 +117,36 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   };
 
   const totalPagar = cargosEnSesion.reduce((acc, c) => acc + c.monto, 0);
+
+  const handleProcesarPago = async () => {
+    if (!perfil || cargosEnSesion.length === 0) return;
+
+    const userStr = localStorage.getItem('tlapa_user');
+    const user = userStr ? JSON.parse(userStr) : { id: 1 };
+
+    setLoading(true);
+    try {
+      const payload = {
+        cajero_id: user.id,
+        contribuyente_id: perfil.id,
+        monto_total: totalPagar,
+        notas: `Pago procesado en módulo ${title}`,
+        carrito: cargosEnSesion.map(c => ({
+          concepto_id: c.concepto_id || conceptosDisponibles[0]?.id || 1,
+          monto: c.monto,
+          activo_ref: c.activoRef || 'general'
+        }))
+      };
+
+      const resp = await api.procesarPago(payload);
+      alert(`¡Pago exitoso! Folio BBDD: ${resp.folio}`);
+      setCargosEnSesion([]);
+    } catch (err: any) {
+      alert(err.message || 'Error procesando el cobro en el servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getActivosMódulo = () => {
     if (!perfil) return [];
@@ -151,16 +173,16 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Buscar por RFC o Nombre..." 
+            <input
+              type="text"
+              placeholder="Buscar por RFC o Nombre..."
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button 
+          <button
             onClick={handleSearch}
             disabled={loading}
             className="w-full sm:w-auto px-10 py-4 bg-emerald-700 text-white font-bold rounded-2xl hover:bg-emerald-800 shadow-lg shadow-emerald-100 transition-all active:scale-95 disabled:opacity-50"
@@ -193,9 +215,8 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                   <button
                     key={activo.id}
                     onClick={() => autoCargarCargosActivo(activo.id)}
-                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group ${
-                      activoSeleccionadoId === activo.id ? `border-${accent}-500 bg-${accent}-50` : 'border-slate-100 hover:bg-slate-50'
-                    }`}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group ${activoSeleccionadoId === activo.id ? `border-${accent}-500 bg-${accent}-50` : 'border-slate-100 hover:bg-slate-50'
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${activoSeleccionadoId === activo.id ? `bg-${accent}-600 text-white` : 'bg-slate-100 text-slate-400'}`}>
@@ -224,7 +245,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Concepto Sugerido</label>
                   <div className="relative">
-                    <select 
+                    <select
                       value={conceptoSeleccionadoId}
                       onChange={(e) => handleConceptoSelect(e.target.value)}
                       className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl appearance-none focus:ring-4 focus:ring-emerald-500/10 text-xs font-bold text-slate-700 outline-none"
@@ -245,8 +266,8 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors">
                         <DollarSign size={14} />
                       </div>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.01"
                         value={montoSugerido}
                         onChange={(e) => setMontoSugerido(e.target.value)}
@@ -257,7 +278,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Activo Destino</label>
-                    <select 
+                    <select
                       value={activoSeleccionadoId}
                       onChange={(e) => setActivoSeleccionadoId(e.target.value)}
                       className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 outline-none"
@@ -270,7 +291,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={addSelectedConcept}
                   disabled={!conceptoSeleccionadoId}
                   className="w-full py-4 bg-emerald-700 text-white font-bold rounded-xl hover:bg-emerald-800 shadow-xl shadow-emerald-100 transition-all flex items-center justify-center gap-2 disabled:opacity-30 text-xs uppercase tracking-widest active:scale-95"
@@ -286,7 +307,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
               <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                 <div>
                   <h4 className="font-bold text-slate-800 text-base">Carrito de Cobro</h4>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1"><Info size={12}/> Los montos son editables individualmente</p>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1"><Info size={12} /> Los montos son editables individualmente</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Consolidado</p>
@@ -313,19 +334,19 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-4">
                         <div className="relative">
                           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">$</div>
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             step="0.01"
                             value={deuda.monto}
                             onChange={(e) => updateCargoMonto(deuda.id, e.target.value)}
                             className="w-32 pl-7 pr-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-emerald-500 focus:bg-white text-right font-mono font-bold text-slate-800 text-sm outline-none transition-all shadow-inner"
                           />
                         </div>
-                        <button 
+                        <button
                           onClick={() => removeCargo(deuda.id)}
                           className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                         >
@@ -346,8 +367,8 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                 <button disabled={cargosEnSesion.length === 0} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-100 disabled:opacity-50">
                   <Printer size={16} /> Imprimir Pre-ticket
                 </button>
-                <button disabled={cargosEnSesion.length === 0} className="px-10 py-3 bg-emerald-700 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-800 shadow-xl shadow-emerald-200 active:scale-95 disabled:opacity-50">
-                  <CreditCard size={16} /> Procesar Pago Consolidado
+                <button onClick={handleProcesarPago} disabled={cargosEnSesion.length === 0 || loading} className="px-10 py-3 bg-emerald-700 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-800 shadow-xl shadow-emerald-200 active:scale-95 disabled:opacity-50">
+                  <CreditCard size={16} /> {loading ? "Procesando..." : "Procesar Pago Consolidado"}
                 </button>
               </div>
             </div>
