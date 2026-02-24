@@ -4,7 +4,7 @@ import {
   Search, Droplet, Map, Store, CheckCircle, AlertCircle,
   CreditCard, Printer, ChevronRight, User, Home, ArrowLeft,
   Clock, Edit2, Plus, Tag, ChevronDown, Trash2, Box, Info,
-  DollarSign
+  DollarSign, Calendar, CalendarDays
 } from 'lucide-react';
 import { ContribuyentePerfil, DeudaItem, Predio, TomaAgua, LicenciaComercio } from '../types';
 
@@ -16,13 +16,17 @@ interface ModuloPagoProps {
 
 const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const [query, setQuery] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
   const [perfil, setPerfil] = useState<ContribuyentePerfil | null>(null);
-  const [cargosEnSesion, setCargosEnSesion] = useState<(DeudaItem & { activoRef?: string, concepto_id?: number })[]>([]);
+  const [cargosEnSesion, setCargosEnSesion] = useState<(DeudaItem & { activoRef?: string, concepto_id?: number, frecuencia?: string, anio_fiscal?: number, mes_fiscal?: number })[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [conceptoSeleccionadoId, setConceptoSeleccionadoId] = useState<string>("");
   const [montoSugerido, setMontoSugerido] = useState<string>("0.00");
   const [activoSeleccionadoId, setActivoSeleccionadoId] = useState<string>("general");
+  const [frecuenciaSeleccionada, setFrecuenciaSeleccionada] = useState<string>('');
+  const [anioFiscal, setAnioFiscal] = useState<number>(new Date().getFullYear());
+  const [mesFiscal, setMesFiscal] = useState<number>(new Date().getMonth() + 1);
 
   const config = {
     agua: { title: 'Agua Potable', icon: Droplet, color: 'text-blue-600', bg: 'bg-blue-50', accent: 'blue' },
@@ -48,14 +52,34 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const handleSearch = async () => {
     if (!query) return;
     setLoading(true);
-    setCargosEnSesion([]);
+    setResultadosBusqueda([]);
 
     try {
-      const resp = await api.getContribuyenteCompleto(query);
-      setPerfil(resp.perfil);
+      const resp = await api.buscarContribuyentesMulti(query);
+      if (resp.contribuyentes && resp.contribuyentes.length > 0) {
+        setResultadosBusqueda(resp.contribuyentes);
+        setPerfil(null);
+        setCargosEnSesion([]);
+      } else {
+        alert("No se encontraron resultados para ese Nombre o RFC.");
+      }
     } catch (err: any) {
-      alert("Contribuyente no encontrado.");
-      setPerfil(null);
+      alert("Error buscando el contribuyente.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const seleccionarPerfil = async (id: number) => {
+    setLoading(true);
+    setResultadosBusqueda([]);
+    try {
+      const resp = await api.getContribuyentePorId(id);
+      setPerfil(resp.perfil);
+      setCargosEnSesion([]);
+    } catch (err: any) {
+      alert("Error al cargar el expediente del contribuyente.");
     } finally {
       setLoading(false);
     }
@@ -66,6 +90,9 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
     const concepto = conceptosDisponibles.find(c => c.id === parseInt(id));
     if (concepto) {
       setMontoSugerido(concepto.precio.toFixed(2));
+      setFrecuenciaSeleccionada(concepto.frecuencia_cobro || 'unico');
+    } else {
+      setFrecuenciaSeleccionada('');
     }
   };
 
@@ -75,19 +102,27 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
     const conceptoObj = conceptosDisponibles.find(c => c.id === parseInt(conceptoSeleccionadoId));
     if (!conceptoObj) return;
 
-    const nuevoCargo: DeudaItem & { activoRef?: string, concepto_id?: number } = {
+    const nuevoCargo: DeudaItem & { activoRef?: string, concepto_id?: number, frecuencia?: string, anio_fiscal?: number, mes_fiscal?: number } = {
       id: Math.floor(Math.random() * 100000),
-      descripcion: conceptoObj.nombre,
+      descripcion: conceptoObj.nombre + (frecuenciaSeleccionada === 'mensual'
+        ? ` (${MESES_NOMBRES[mesFiscal - 1]} ${anioFiscal})`
+        : frecuenciaSeleccionada === 'anual'
+          ? ` (Año ${anioFiscal})`
+          : ''),
       monto: parseFloat(montoSugerido) || 0,
       estado: 'pendiente',
       fecha_vencimiento: new Date().toISOString().split('T')[0],
       activoRef: activoSeleccionadoId !== 'general' ? activoSeleccionadoId : undefined,
-      concepto_id: conceptoObj.id
+      concepto_id: conceptoObj.id,
+      frecuencia: frecuenciaSeleccionada,
+      anio_fiscal: frecuenciaSeleccionada !== 'unico' ? anioFiscal : undefined,
+      mes_fiscal: frecuenciaSeleccionada === 'mensual' ? mesFiscal : undefined
     };
 
     setCargosEnSesion([...cargosEnSesion, nuevoCargo]);
     setConceptoSeleccionadoId("");
     setMontoSugerido("0.00");
+    setFrecuenciaSeleccionada('');
   };
 
   const updateCargoMonto = (id: number, nuevoMonto: string) => {
@@ -134,7 +169,10 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
         carrito: cargosEnSesion.map(c => ({
           concepto_id: c.concepto_id || conceptosDisponibles[0]?.id || 1,
           monto: c.monto,
-          activo_ref: c.activoRef || 'general'
+          activo_ref: c.activoRef || 'general',
+          frecuencia: c.frecuencia || 'unico',
+          anio_fiscal: c.anio_fiscal,
+          mes_fiscal: c.mes_fiscal
         }))
       };
 
@@ -157,6 +195,10 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
 
   const activosDisponibles = getActivosMódulo();
 
+  const MESES_NOMBRES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const anioActual = new Date().getFullYear();
+  const aniosDisponibles = [anioActual - 2, anioActual - 1, anioActual, anioActual + 1];
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center gap-4">
@@ -169,7 +211,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
         </div>
       </div>
 
-      <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 relative">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -190,6 +232,42 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
             {loading ? 'Buscando...' : 'Buscar'}
           </button>
         </div>
+
+        {resultadosBusqueda.length > 0 && (
+          <div className="absolute left-0 right-0 top-[110%] bg-white border border-emerald-100 shadow-2xl rounded-2xl overflow-hidden z-50">
+            <div className="bg-emerald-50 px-6 py-2 border-b border-emerald-100 flex justify-between items-center">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">
+                Seleccione un Contribuyente
+              </span>
+              <button
+                onClick={() => setResultadosBusqueda([])}
+                className="text-xs text-slate-500 hover:text-slate-700 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {resultadosBusqueda.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => seleccionarPerfil(c.id)}
+                  className="w-full flex items-center justify-between p-4 border-b border-slate-50 hover:bg-emerald-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">
+                      <User size={14} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{c.nombre_completo}</p>
+                      <p className="text-xs text-slate-500 font-mono mt-0.5">{c.rfc}</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-emerald-500 opacity-50" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {perfil && (
@@ -291,6 +369,83 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                   </div>
                 </div>
 
+                {/* SELECTOR DE PERIODO FISCAL */}
+                {frecuenciaSeleccionada === 'mensual' && (
+                  <div className="space-y-3 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CalendarDays size={14} className="text-blue-600" />
+                      <label className="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Periodo Mensual a Pagar</label>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                      {MESES_NOMBRES.map((mes, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setMesFiscal(idx + 1)}
+                          className={`px-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-tight transition-all ${mesFiscal === idx + 1
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                            : 'bg-white text-slate-500 hover:bg-blue-50 border border-slate-100'
+                            }`}
+                        >
+                          {mes.substring(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={12} className="text-blue-500" />
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Año Fiscal</label>
+                      <div className="flex gap-1.5 ml-auto">
+                        {aniosDisponibles.map(a => (
+                          <button
+                            key={a}
+                            type="button"
+                            onClick={() => setAnioFiscal(a)}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${anioFiscal === a
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : 'bg-white text-slate-500 hover:bg-blue-50 border border-slate-100'
+                              }`}
+                          >
+                            {a}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[8px] text-blue-500 font-medium">⚠️ Cobrando: {MESES_NOMBRES[mesFiscal - 1]} {anioFiscal}</p>
+                  </div>
+                )}
+
+                {frecuenciaSeleccionada === 'anual' && (
+                  <div className="space-y-3 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar size={14} className="text-emerald-600" />
+                      <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Año Fiscal a Pagar</label>
+                    </div>
+                    <div className="flex gap-2">
+                      {aniosDisponibles.map(a => (
+                        <button
+                          key={a}
+                          type="button"
+                          onClick={() => setAnioFiscal(a)}
+                          className={`flex-1 px-3 py-3 rounded-xl text-xs font-bold transition-all ${anioFiscal === a
+                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
+                            : 'bg-white text-slate-500 hover:bg-emerald-50 border border-slate-100'
+                            }`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[8px] text-emerald-500 font-medium">📅 Cobrando año fiscal: {anioFiscal}</p>
+                  </div>
+                )}
+
+                {frecuenciaSeleccionada === 'unico' && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <Info size={12} className="text-slate-400" />
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Pago único — No requiere periodo fiscal</p>
+                  </div>
+                )}
+
                 <button
                   onClick={addSelectedConcept}
                   disabled={!conceptoSeleccionadoId}
@@ -325,10 +480,20 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
                         <div className={`p-2.5 rounded-xl ${bg} ${color}`}><Tag size={18} /></div>
                         <div className="space-y-1 flex-1">
                           <h5 className="font-bold text-slate-800 text-sm leading-tight">{deuda.descripcion}</h5>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {deuda.activoRef && (
                               <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md bg-${accent}-50 text-${accent}-700 border border-${accent}-100 flex items-center gap-1`}>
                                 <Box size={8} /> Ref: {deuda.activoRef}
+                              </span>
+                            )}
+                            {deuda.frecuencia === 'mensual' && deuda.mes_fiscal && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
+                                <CalendarDays size={8} /> {MESES_NOMBRES[(deuda.mes_fiscal || 1) - 1]?.substring(0, 3)} {deuda.anio_fiscal}
+                              </span>
+                            )}
+                            {deuda.frecuencia === 'anual' && deuda.anio_fiscal && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
+                                <Calendar size={8} /> Año {deuda.anio_fiscal}
                               </span>
                             )}
                           </div>

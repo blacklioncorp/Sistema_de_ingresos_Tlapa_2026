@@ -11,17 +11,20 @@ CREATE TABLE IF NOT EXISTS usuarios (
     permiso_agua BOOLEAN DEFAULT FALSE,
     permiso_catastro BOOLEAN DEFAULT FALSE,
     permiso_comercio BOOLEAN DEFAULT FALSE,
+    activo BOOLEAN DEFAULT TRUE,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2. CONTRIBUYENTES (Ciudadanos)
 CREATE TABLE IF NOT EXISTS contribuyentes (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    rfc VARCHAR(13) UNIQUE NOT NULL,
+    rfc VARCHAR(20) NULL,
     nombre_completo VARCHAR(150) NOT NULL,
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(20),
     email VARCHAR(100),
+    latitud DECIMAL(10, 8),
+    longitud DECIMAL(11, 8),
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -32,6 +35,8 @@ CREATE TABLE IF NOT EXISTS predios_catastro (
     direccion_predio VARCHAR(255) NOT NULL,
     valor_catastral DECIMAL(12, 2) NOT NULL,
     tipo_predio ENUM('urbano', 'rustico') NOT NULL,
+    latitud DECIMAL(10, 8),
+    longitud DECIMAL(11, 8),
     contribuyente_id INT NOT NULL,
     FOREIGN KEY (contribuyente_id) REFERENCES contribuyentes(id) ON DELETE CASCADE
 );
@@ -42,6 +47,9 @@ CREATE TABLE IF NOT EXISTS tomas_agua (
     numero_contrato VARCHAR(50) UNIQUE NOT NULL,
     direccion_toma VARCHAR(255) NOT NULL,
     tipo_servicio ENUM('domestico', 'comercial', 'industrial') NOT NULL,
+    estado ENUM('activo', 'pausado', 'cancelado') DEFAULT 'activo',
+    latitud DECIMAL(10, 8),
+    longitud DECIMAL(11, 8),
     contribuyente_id INT NOT NULL,
     FOREIGN KEY (contribuyente_id) REFERENCES contribuyentes(id) ON DELETE CASCADE
 );
@@ -53,6 +61,9 @@ CREATE TABLE IF NOT EXISTS licencias_comercio (
     nombre_negocio VARCHAR(150) NOT NULL,
     giro VARCHAR(100) NOT NULL,
     direccion_local VARCHAR(255) NOT NULL,
+    estado ENUM('activo', 'pausado', 'cancelado') DEFAULT 'activo',
+    latitud DECIMAL(10, 8),
+    longitud DECIMAL(11, 8),
     contribuyente_id INT NOT NULL,
     FOREIGN KEY (contribuyente_id) REFERENCES contribuyentes(id) ON DELETE CASCADE
 );
@@ -60,9 +71,12 @@ CREATE TABLE IF NOT EXISTS licencias_comercio (
 -- 6. CONCEPTOS DE COBRO
 CREATE TABLE IF NOT EXISTS conceptos_cobro (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    clave VARCHAR(50) UNIQUE NOT NULL,
     area ENUM('agua', 'catastro', 'comercio') NOT NULL,
     nombre VARCHAR(150) NOT NULL,
     precio DECIMAL(10, 2) NOT NULL,
+    calculado BOOLEAN DEFAULT FALSE,
+    frecuencia_cobro ENUM('mensual', 'anual', 'unico') NOT NULL DEFAULT 'anual',
     activo BOOLEAN DEFAULT TRUE
 );
 
@@ -78,13 +92,17 @@ CREATE TABLE IF NOT EXISTS pagos (
     FOREIGN KEY (contribuyente_id) REFERENCES contribuyentes(id)
 );
 
--- 8. DETALLE DE PAGOS (Relaciona Pagos con Conceptos)
+-- 8. DETALLE DE PAGOS (Relaciona Pagos con Conceptos y Periodos)
 CREATE TABLE IF NOT EXISTS pago_detalles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     pago_id INT NOT NULL,
     concepto_id INT NOT NULL,
     monto DECIMAL(10, 2) NOT NULL,
-    activo_ref VARCHAR(50), -- EJ: numero_contrato, clave_catastral
+    activo_ref VARCHAR(50),            -- EJ: numero_contrato, clave_catastral
+    periodo_inicio DATE,               -- Desde qué fecha cubre este pago (ej: 2026-01-01)
+    periodo_fin DATE,                  -- Hasta qué fecha cubre este pago (ej: 2026-01-31 o 2026-12-31)
+    anio_fiscal SMALLINT,              -- Año fiscal que se está pagando (ej: 2026)
+    mes_fiscal TINYINT,                -- Mes fiscal (1-12), NULL si es pago anual
     FOREIGN KEY (pago_id) REFERENCES pagos(id) ON DELETE CASCADE,
     FOREIGN KEY (concepto_id) REFERENCES conceptos_cobro(id)
 );
@@ -106,24 +124,24 @@ CREATE TABLE IF NOT EXISTS historial_movimientos (
 
 -- INSERCIÓN DE DATOS INICIALES (MOCK DATA TEMPORAL) PARA PRUEBAS
 
--- Usuario Administrador Default (Password: admin123 -> Nota: en un entorno real debe ir hasheada, usaremos texto plano para esta prueba rápida y luego mejorarlo)
+-- Usuario Administrador Default (Password: admin123)
 INSERT INTO usuarios (nombre, email, password, rol, permiso_agua, permiso_catastro, permiso_comercio) 
-VALUES ('Admin General', 'admin@tlapa.gob.mx', 'admin123', 'admin', TRUE, TRUE, TRUE);
+VALUES ('Admin General', 'admin@tlapa.gob.mx', '$2b$10$rJjRAWCPs/06YMxGum0dreHCMU3x3703LSTzRGyw7kz1U.ujEgGha', 'admin', TRUE, TRUE, TRUE);
 
--- Cajero de prueba
+-- Cajero de prueba (Password: 12345)
 INSERT INTO usuarios (nombre, email, password, rol, permiso_agua, permiso_catastro, permiso_comercio) 
-VALUES ('Cajero Agua', 'cajero1@tlapa.gob.mx', '12345', 'cajero', TRUE, FALSE, FALSE);
+VALUES ('Cajero Agua', 'cajero1@tlapa.gob.mx', '$2b$10$BRdU9Rk.TV15r0oZdoJG..WYq/5K9mEGnPc1rVwMao94leBLV5cWi', 'cajero', TRUE, FALSE, FALSE);
 
--- Conceptos de Cobro
-INSERT INTO conceptos_cobro (area, nombre, precio) VALUES 
-('agua', 'Mensualidad Abastecimiento de Agua', 150.00),
-('agua', 'Anualidad Abastecimiento de Agua', 1600.00),
-('agua', 'Conexión de Agua Potable (Contrato)', 2500.00),
-('agua', 'Reconexión de Servicio', 300.00),
-('catastro', 'Impuesto Predial Anual', 1200.00),
-('catastro', 'Certificado de Valor Catastral', 150.00),
-('comercio', 'Refrendo de Licencia Anual', 850.00),
-('comercio', 'Permiso de Anuncios', 300.00);
+-- Conceptos de Cobro (con frecuencia de cobro para el cálculo de rezago)
+INSERT INTO conceptos_cobro (area, nombre, precio, frecuencia_cobro) VALUES 
+('agua', 'Mensualidad Abastecimiento de Agua', 150.00, 'mensual'),
+('agua', 'Anualidad Abastecimiento de Agua', 1600.00, 'anual'),
+('agua', 'Conexión de Agua Potable (Contrato)', 2500.00, 'unico'),
+('agua', 'Reconexión de Servicio', 300.00, 'unico'),
+('catastro', 'Impuesto Predial Anual', 1200.00, 'anual'),
+('catastro', 'Certificado de Valor Catastral', 150.00, 'unico'),
+('comercio', 'Refrendo de Licencia Anual', 850.00, 'anual'),
+('comercio', 'Permiso de Anuncios', 300.00, 'unico');
 
 -- Contribuyente de prueba
 INSERT INTO contribuyentes (rfc, nombre_completo, direccion, telefono, email)

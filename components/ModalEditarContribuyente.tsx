@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Save, ShieldCheck, Mail, Phone, MapPin, Hash } from 'lucide-react';
 import { ContribuyentePerfil } from '../types';
+import MapPicker from './MapPicker';
 
 interface ModalEditarContribuyenteProps {
   isOpen: boolean;
@@ -13,21 +14,25 @@ interface ModalEditarContribuyenteProps {
 const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isOpen, onClose, perfil, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    nombre_completo: perfil.nombre_completo,
-    rfc: perfil.rfc,
-    direccion_fiscal: perfil.direccion_fiscal,
-    telefono: perfil.telefono,
-    email: perfil.email
+    nombre_completo: perfil.nombre_completo || '',
+    rfc: perfil.rfc || '',
+    direccion_fiscal: perfil.direccion_fiscal || '',
+    telefono: perfil.telefono || '',
+    email: perfil.email || '',
+    latitud: perfil.latitud,
+    longitud: perfil.longitud
   });
 
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        nombre_completo: perfil.nombre_completo,
-        rfc: perfil.rfc,
-        direccion_fiscal: perfil.direccion_fiscal,
-        telefono: perfil.telefono,
-        email: perfil.email
+        nombre_completo: perfil.nombre_completo || '',
+        rfc: perfil.rfc || '',
+        direccion_fiscal: perfil.direccion_fiscal || '',
+        telefono: perfil.telefono || '',
+        email: perfil.email || '',
+        latitud: perfil.latitud,
+        longitud: perfil.longitud
       });
     }
   }, [isOpen, perfil]);
@@ -38,16 +43,17 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Simulación de actualización en API
-    setTimeout(() => {
-      onSave(formData);
+    try {
+      await onSave(formData);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
       onClose();
-    }, 800);
+    }
   };
 
   return (
@@ -76,8 +82,8 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nombre Completo / Razón Social</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
-                    required 
+                  <input
+                    required
                     name="nombre_completo"
                     value={formData.nombre_completo}
                     onChange={handleChange}
@@ -90,11 +96,11 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">RFC</label>
                 <div className="relative">
                   <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
-                    required 
+                  <input
                     name="rfc"
                     value={formData.rfc}
                     onChange={handleChange}
+                    placeholder="Puede quedar vacío o genérico"
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all font-mono uppercase font-bold text-slate-700"
                   />
                 </div>
@@ -104,7 +110,7 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Teléfono</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
+                  <input
                     name="telefono"
                     value={formData.telefono}
                     onChange={handleChange}
@@ -117,7 +123,7 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Correo Electrónico</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
+                  <input
                     type="email"
                     name="email"
                     value={formData.email}
@@ -131,7 +137,7 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección Fiscal</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-4 text-slate-400" size={16} />
-                  <textarea 
+                  <textarea
                     name="direccion_fiscal"
                     value={formData.direccion_fiscal}
                     onChange={handleChange}
@@ -140,21 +146,30 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
                   />
                 </div>
               </div>
+
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ubicación Geográfica</label>
+                <MapPicker
+                  height="220px"
+                  initialLocation={formData.latitud ? { lat: formData.latitud, lng: formData.longitud || 0 } : undefined}
+                  onLocationSelect={(coords) => setFormData({ ...formData, latitud: coords.lat, longitud: coords.lng })}
+                />
+              </div>
             </div>
           </div>
 
           {/* Footer */}
           <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               className="px-6 py-3 text-slate-500 font-bold text-sm hover:text-slate-800 transition-colors uppercase tracking-widest"
             >
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              disabled={loading} 
+            <button
+              type="submit"
+              disabled={loading}
               className="px-8 py-3 bg-emerald-700 text-white font-bold rounded-xl hover:bg-emerald-800 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 disabled:opacity-50"
             >
               {loading ? (

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, ArrowLeft, Save, AlertTriangle, CheckCircle } from 'lucide-react';
 import { api } from '../services/api';
+import MapPicker from '../components/MapPicker';
 
 const NuevoContribuyente: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +16,9 @@ const NuevoContribuyente: React.FC = () => {
     nombre_completo: '',
     direccion: '',
     telefono: '',
-    email: ''
+    email: '',
+    latitud: undefined as number | undefined,
+    longitud: undefined as number | undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,9 +26,11 @@ const NuevoContribuyente: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Validación básica RFC
-    if (formData.rfc.length < 12 || formData.rfc.length > 13) {
-      setError("El RFC debe tener entre 12 y 13 caracteres.");
+    // Validación de RFC opcionalmente relajada
+    // Se elimina la restricción de 12 a 13 caracteres para admitir RFCs genéricos o vacíos en el futuro si se requiere, 
+    // pero mantenemos que al menos ponga algo básico.
+    if (formData.rfc && formData.rfc.length < 3) {
+      setError("Si ingresa un RFC, debe ser válido o usar uno genérico (ej. XAXX010101000).");
       setLoading(false);
       return;
     }
@@ -118,6 +123,13 @@ const NuevoContribuyente: React.FC = () => {
                 placeholder="Calle, Número, Colonia, C.P."
                 value={formData.direccion}
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <MapPicker
+                height="220px"
+                onLocationSelect={(coords) => setFormData({ ...formData, latitud: coords.lat, longitud: coords.lng })}
               />
             </div>
           </div>

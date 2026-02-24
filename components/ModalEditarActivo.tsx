@@ -27,16 +27,17 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Simulación de guardado
-    setTimeout(() => {
-      onSave(formData);
+    try {
+      await onSave(formData);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
       onClose();
-    }, 600);
+    }
   };
 
   const getIcon = () => {
@@ -56,11 +57,10 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl shadow-lg ${
-              tipo === 'predio' ? 'bg-amber-600 text-white' : 
-              tipo === 'toma' ? 'bg-blue-600 text-white' : 
-              'bg-emerald-700 text-white'
-            }`}>
+            <div className={`p-2 rounded-xl shadow-lg ${tipo === 'predio' ? 'bg-amber-600 text-white' :
+                tipo === 'toma' ? 'bg-blue-600 text-white' :
+                  'bg-emerald-700 text-white'
+              }`}>
               {getIcon()}
             </div>
             <div>
@@ -81,7 +81,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Clave Catastral</label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input 
+                    <input
                       required
                       name="clave_catastral"
                       value={formData.clave_catastral}
@@ -94,7 +94,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección del Predio</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3.5 text-slate-400" size={16} />
-                    <textarea 
+                    <textarea
                       required
                       rows={2}
                       name="direccion_predio"
@@ -107,7 +107,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Valor Catastral ($)</label>
-                    <input 
+                    <input
                       required
                       type="number"
                       name="valor_catastral"
@@ -118,8 +118,8 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tipo de Predio</label>
-                    <select 
-                      name="tipo_predio" 
+                    <select
+                      name="tipo_predio"
                       value={formData.tipo_predio}
                       onChange={handleChange}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 font-bold"
@@ -138,7 +138,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Número de Contrato</label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input 
+                    <input
                       required
                       name="numero_contrato"
                       value={formData.numero_contrato}
@@ -151,7 +151,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección de la Toma</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3.5 text-slate-400" size={16} />
-                    <textarea 
+                    <textarea
                       required
                       rows={2}
                       name="direccion_toma"
@@ -163,7 +163,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tipo de Servicio</label>
-                  <input 
+                  <input
                     required
                     name="tipo_servicio"
                     value={formData.tipo_servicio}
@@ -180,7 +180,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nombre Comercial</label>
                   <div className="relative">
                     <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input 
+                    <input
                       required
                       name="nombre_negocio"
                       value={formData.nombre_negocio}
@@ -192,7 +192,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Licencia</label>
-                    <input 
+                    <input
                       required
                       name="numero_licencia"
                       value={formData.numero_licencia}
@@ -202,7 +202,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Giro</label>
-                    <input 
+                    <input
                       required
                       name="giro"
                       value={formData.giro}
@@ -215,7 +215,7 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección del Establecimiento</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3.5 text-slate-400" size={16} />
-                    <textarea 
+                    <textarea
                       required
                       rows={2}
                       name="direccion_local"
@@ -238,8 +238,8 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
 
           <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-6 py-3 text-slate-500 font-bold text-xs uppercase tracking-widest hover:text-slate-800 transition-colors">Cancelar</button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               className="px-8 py-3 bg-emerald-700 text-white font-bold rounded-xl hover:bg-emerald-800 shadow-lg shadow-emerald-100 transition-all flex items-center gap-2 disabled:opacity-50"
             >

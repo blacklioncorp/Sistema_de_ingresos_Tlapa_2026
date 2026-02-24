@@ -1,0 +1,30 @@
+const XLSX = require('xlsx');
+const wb = XLSX.readFile('E:\\Stivi\\001 TRABAJOS\\INGRESOS\\importante\\Agua Potable B 2026.xlsx');
+console.log('Hojas:', wb.SheetNames);
+const ws = wb.Sheets[wb.SheetNames[0]];
+const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+console.log('Total filas:', data.length);
+console.log('---ENCABEZADOS (fila 0)---');
+console.log(JSON.stringify(data[0]));
+console.log('---FILA 1---');
+console.log(JSON.stringify(data[1]));
+console.log('---FILA 2---');
+console.log(JSON.stringify(data[2]));
+console.log('---FILA 3---');
+console.log(JSON.stringify(data[3]));
+console.log('---FILA 10---');
+console.log(JSON.stringify(data[10]));
+console.log('---FILA 50---');
+console.log(JSON.stringify(data[50]));
+console.log('---FILA 100---');
+console.log(JSON.stringify(data[100]));
+
+// Analizar duplicados por nombre
+const nombres = data.slice(1).map(r => r[1] || r[2] || '').filter(Boolean);
+const conteo = {};
+nombres.forEach(n => { const key = String(n).trim().toUpperCase(); conteo[key] = (conteo[key] || 0) + 1; });
+const duplicados = Object.entries(conteo).filter(([k, v]) => v > 1).sort((a, b) => b[1] - a[1]);
+console.log('---DUPLICADOS TOP 20---');
+console.log('Total nombres unicos:', Object.keys(conteo).length);
+console.log('Nombres repetidos:', duplicados.length);
+duplicados.slice(0, 20).forEach(([nombre, veces]) => console.log(`  ${veces}x -> ${nombre}`));

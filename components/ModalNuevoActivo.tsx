@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { X, Droplet, Home, Store, Save, ShieldCheck, Info } from 'lucide-react';
+import MapPicker from './MapPicker';
 
 interface ModalNuevoActivoProps {
   isOpen: boolean;
   onClose: () => void;
   contribuyenteId: number;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<boolean> | any;
 }
 
 const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, contribuyenteId, onSave }) => {
@@ -24,21 +25,25 @@ const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, co
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const payload = {
       contribuyente_id: contribuyenteId,
       tipo_activo: tipoActivo,
       datos_especificos: formData
     };
 
-    setTimeout(() => {
-      onSave(payload);
+    try {
+      const success = await onSave(payload);
+      if (success !== false) {
+        setFormData({});
+        onClose();
+      }
+    } finally {
       setLoading(false);
-      onClose();
-    }, 800);
+    }
   };
 
   return (
@@ -76,13 +81,12 @@ const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, co
                     type="button"
                     onClick={() => {
                       setTipoActivo(tipo.id as any);
-                      setFormData({}); 
+                      setFormData({});
                     }}
-                    className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                      tipoActivo === tipo.id 
-                      ? `border-emerald-700 bg-emerald-50 text-emerald-800 ring-4 ring-emerald-500/10 shadow-lg` 
+                    className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${tipoActivo === tipo.id
+                      ? `border-emerald-700 bg-emerald-50 text-emerald-800 ring-4 ring-emerald-500/10 shadow-lg`
                       : 'border-slate-100 text-slate-400 hover:border-slate-200 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <tipo.icon size={28} className={tipoActivo === tipo.id ? `text-${tipo.color === 'emerald' ? 'emerald' : tipo.color}-600` : ''} />
                     <span className="text-xs font-bold uppercase tracking-tight">{tipo.label}</span>
@@ -117,6 +121,9 @@ const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, co
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección de la Toma</label>
                       <input required type="text" name="direccion_toma" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-bold" placeholder="Calle, Número y Colonia" />
                     </div>
+                    <div className="md:col-span-2">
+                      <MapPicker onLocationSelect={(coords) => setFormData(prev => ({ ...prev, latitud: coords.lat, longitud: coords.lng }))} />
+                    </div>
                   </>
                 )}
 
@@ -134,6 +141,17 @@ const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, co
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ubicación del Predio</label>
                       <input required type="text" name="ubicacion_predio" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-bold" placeholder="Calle, Lote, Manzana y Colonia" />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Pago Base ($)</label>
+                      <input required type="number" step="0.01" name="pago_base" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-mono font-bold" placeholder="0.00" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Concepto</label>
+                      <input required type="text" name="concepto" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-bold" placeholder="Ej. Impuesto Predial" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <MapPicker onLocationSelect={(coords) => setFormData(prev => ({ ...prev, latitud: coords.lat, longitud: coords.lng }))} />
+                    </div>
                   </>
                 )}
 
@@ -150,6 +168,13 @@ const ModalNuevoActivo: React.FC<ModalNuevoActivoProps> = ({ isOpen, onClose, co
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Giro</label>
                       <input required type="text" name="giro" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-bold" />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección del Local</label>
+                      <input required type="text" name="direccion_local" onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all text-sm font-bold" placeholder="Calle y número" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <MapPicker onLocationSelect={(coords) => setFormData(prev => ({ ...prev, latitud: coords.lat, longitud: coords.lng }))} />
                     </div>
                   </>
                 )}

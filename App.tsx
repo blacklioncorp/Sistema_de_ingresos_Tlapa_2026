@@ -32,6 +32,7 @@ const App: React.FC = () => {
       const resp = await api.login({ email, password });
       setUser(resp.user);
       localStorage.setItem('tlapa_user', JSON.stringify(resp.user));
+      localStorage.setItem('tlapa_token', resp.token);
     } catch (err: any) {
       setLoginError(err.message || 'Error al iniciar sesión');
     } finally {
