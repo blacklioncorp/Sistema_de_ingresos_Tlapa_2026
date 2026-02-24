@@ -1,0 +1,5 @@
+{
+  "name": "Sistema de Ingresos Tlapa",
+  "description": "Plataforma integral de recaudación municipal para el Ayuntamiento de Tlapa de Comonfort, permitiendo la gestión de contribuyentes, cajeros y módulos de pago de servicios.",
+  "requestFramePermissions": []
+}
