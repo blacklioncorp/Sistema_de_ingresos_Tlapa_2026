@@ -47,7 +47,11 @@ export const api = {
     },
 
     // ---- Contribuyentes ----
-    getContribuyentes: () => fetchClient('/contribuyentes'),
+    getContribuyentes: (query?: string) => {
+        const params = new URLSearchParams();
+        if (query) params.set('query', query);
+        return fetchClient(`/contribuyentes?${params.toString()}`);
+    },
 
     getContribuyenteCompleto: (query: string) => fetchClient(`/contribuyentes/busqueda/${encodeURIComponent(query)}`),
 
@@ -125,5 +129,8 @@ export const api = {
     }),
     eliminarConcepto: (id: number) => fetchClient(`/conceptos/${id}`, {
         method: 'DELETE'
-    })
+    }),
+
+    // --- Mapa de Cobertura ---
+    obtenerCobertura: () => fetchClient('/mapa/cobertura')
 };

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Save, Edit2, MapPin, Hash, Info, Droplet, Home, Store } from 'lucide-react';
+import MapPicker from './MapPicker';
 
 interface ModalEditarActivoProps {
   isOpen: boolean;
@@ -58,8 +59,8 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-xl shadow-lg ${tipo === 'predio' ? 'bg-amber-600 text-white' :
-                tipo === 'toma' ? 'bg-blue-600 text-white' :
-                  'bg-emerald-700 text-white'
+              tipo === 'toma' ? 'bg-blue-600 text-white' :
+                'bg-emerald-700 text-white'
               }`}>
               {getIcon()}
             </div>
@@ -227,6 +228,17 @@ const ModalEditarActivo: React.FC<ModalEditarActivoProps> = ({ isOpen, onClose, 
                 </div>
               </>
             )}
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Ubicación Geográfica en el Mapa</label>
+              <div className="mt-2" style={{ height: "220px" }}>
+                <MapPicker
+                  height="100%"
+                  initialPosition={formData.latitud ? { lat: parseFloat(formData.latitud), lng: parseFloat(formData.longitud) || 0 } : undefined}
+                  onLocationSelect={(coords) => setFormData({ ...formData, latitud: coords.lat, longitud: coords.lng })}
+                />
+              </div>
+            </div>
 
             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex gap-3">
               <Info size={18} className="text-emerald-600 flex-shrink-0" />

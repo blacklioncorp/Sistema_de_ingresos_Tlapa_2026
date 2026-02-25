@@ -317,7 +317,16 @@ app.get('/api/conceptos/:area', authenticateToken, async (req, res) => {
 // ==========================================
 app.get('/api/contribuyentes', authenticateToken, async (req, res) => {
     try {
-        const [contribuyentes] = await db.query("SELECT * FROM contribuyentes ORDER BY nombre_completo");
+        const { query: searchQuery } = req.query;
+        let sql = "SELECT * FROM contribuyentes ORDER BY id DESC LIMIT 150";
+        let params = [];
+
+        if (searchQuery && searchQuery.trim() !== '') {
+            sql = "SELECT * FROM contribuyentes WHERE nombre_completo LIKE ? OR rfc LIKE ? ORDER BY nombre_completo LIMIT 100";
+            params = [`%${searchQuery}%`, `%${searchQuery}%`];
+        }
+
+        const [contribuyentes] = await db.query(sql, params);
         res.json({ success: true, contribuyentes });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -887,6 +896,91 @@ app.get('/api/conceptos/:area', authenticateToken, async (req, res) => {
     try {
         const [conceptos] = await db.query('SELECT * FROM conceptos_cobro WHERE area = ? ORDER BY id ASC', [area]);
         res.json({ success: true, conceptos });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==========================================
+// 9. METODOS PARA MAPA DE COBERTURA
+// ==========================================
+app.get('/api/mapa/cobertura', authenticateToken, async (req, res) => {
+    try {
+        const queryEstadoPago = `
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM pago_detalles pd 
+                    JOIN pagos p ON pd.pago_id = p.id
+                    WHERE pd.activo_ref = ?
+                    AND pd.periodo_fin >= CURRENT_DATE()
+                ) THEN 'cumplidor'
+                WHEN EXISTS (
+                    SELECT 1 FROM pago_detalles pd 
+                    JOIN pagos p ON pd.pago_id = p.id
+                    WHERE pd.activo_ref = ?
+                ) THEN 'moroso'
+                ELSE 'desconocido'
+            END as estado_pago
+        `;
+
+        const [agua] = await db.query(`
+            SELECT t.id, t.numero_contrato as identificador, t.tipo_servicio as extradata, t.latitud, t.longitud, c.nombre_completo as contribuyente, 'agua' as tipo,
+            REPLACE(${queryEstadoPago}, '?', t.numero_contrato) as estado_pago_computed
+            FROM tomas_agua t
+            JOIN contribuyentes c ON t.contribuyente_id = c.id
+            WHERE t.latitud IS NOT NULL AND t.longitud IS NOT NULL
+        `);
+        // Workaround for dynamic replace in query
+        const aguaParsed = agua.map(a => ({ ...a, estado_pago: 'desconocido' }));
+
+        const [catastro] = await db.query(`
+            SELECT p.id, p.clave_catastral as identificador, p.tipo_predio as extradata, p.latitud, p.longitud, c.nombre_completo as contribuyente, 'catastro' as tipo
+            FROM predios_catastro p
+            JOIN contribuyentes c ON p.contribuyente_id = c.id
+            WHERE p.latitud IS NOT NULL AND p.longitud IS NOT NULL
+        `);
+        const catastroParsed = catastro.map(a => ({ ...a, estado_pago: 'desconocido' }));
+
+        const [comercio] = await db.query(`
+            SELECT l.id, l.numero_licencia as identificador, l.giro as extradata, l.latitud, l.longitud, c.nombre_completo as contribuyente, 'comercio' as tipo
+            FROM licencias_comercio l
+            JOIN contribuyentes c ON l.contribuyente_id = c.id
+            WHERE l.latitud IS NOT NULL AND l.longitud IS NOT NULL
+        `);
+        const comercioParsed = comercio.map(a => ({ ...a, estado_pago: 'desconocido' }));
+
+        // Fetch all pago_detalles to map them manually in JS for reliable state computation
+        const [pagos] = await db.query("SELECT activo_ref, MAX(periodo_fin) as ultimo_periodo FROM pago_detalles GROUP BY activo_ref");
+        const pagosMap = new Map();
+        pagos.forEach(p => pagosMap.set(p.activo_ref, new Date(p.ultimo_periodo)));
+
+        const now = new Date();
+
+        const calculateState = (items) => {
+            return items.map(item => {
+                const ultimoPago = pagosMap.get(item.identificador);
+                let estado_pago = 'desconocido';
+                if (ultimoPago) {
+                    estado_pago = ultimoPago >= now ? 'cumplidor' : 'moroso';
+                }
+                return { ...item, estado_pago };
+            });
+        };
+
+        const [sinUbicacion] = await db.query(`
+            SELECT id, nombre_completo, direccion 
+            FROM contribuyentes 
+            WHERE latitud IS NULL OR longitud IS NULL
+            LIMIT 200
+        `);
+
+        res.json({
+            success: true,
+            agua: calculateState(aguaParsed),
+            catastro: calculateState(catastroParsed),
+            comercio: calculateState(comercioParsed),
+            sinUbicacion
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

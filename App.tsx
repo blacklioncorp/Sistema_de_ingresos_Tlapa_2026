@@ -8,6 +8,7 @@ import NuevoContribuyente from './pages/NuevoContribuyente';
 import ContribuyenteDetalle from './pages/ContribuyenteDetalle';
 import Cajeros from './pages/Cajeros';
 import AdminConceptos from './pages/AdminConceptos';
+import MapaCobertura from './pages/MapaCobertura';
 import ModuloPago from './pages/ModuloPago';
 import Reportes from './pages/Reportes';
 import { Usuario } from './types';
@@ -121,6 +122,7 @@ const App: React.FC = () => {
           <Route path="/contribuyentes/:id" element={<ContribuyenteDetalle />} />
           <Route path="/cajeros" element={user.rol === 'admin' ? <Cajeros /> : <Navigate to="/" />} />
           <Route path="/admin/conceptos" element={user.rol === 'admin' ? <AdminConceptos /> : <Navigate to="/" />} />
+          <Route path="/admin/mapa" element={user.rol === 'admin' ? <MapaCobertura /> : <Navigate to="/" />} />
           <Route path="/reporte" element={user.rol === 'admin' ? <Reportes /> : <Navigate to="/" />} />
 
           {user.permisos.agua && <Route path="/modulo-agua" element={<ModuloPago tipo="agua" />} />}

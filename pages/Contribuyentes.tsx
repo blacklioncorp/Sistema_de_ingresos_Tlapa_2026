@@ -13,8 +13,9 @@ const Contribuyentes: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const result = await api.getContribuyentes();
+        const result = await api.getContribuyentes(searchTerm);
         setData(result.contribuyentes || []);
       } catch (error) {
         console.error("Error cargando contribuyentes", error);
@@ -22,13 +23,16 @@ const Contribuyentes: React.FC = () => {
         setLoading(false);
       }
     };
-    fetchData();
-  }, []);
 
-  const filtered = data.filter(c =>
-    c.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.rfc.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    // Simple debounce para no saturar al servidor al teclear rápido
+    const delayDebounceFn = setTimeout(() => {
+      fetchData();
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  const filtered = data; // Ya vienen filtrados del backend
 
   return (
     <div className="space-y-6">

@@ -16,7 +16,7 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
   const [formData, setFormData] = useState({
     nombre_completo: perfil.nombre_completo || '',
     rfc: perfil.rfc || '',
-    direccion_fiscal: perfil.direccion_fiscal || '',
+    direccion: perfil.direccion || perfil.direccion_fiscal || '',
     telefono: perfil.telefono || '',
     email: perfil.email || '',
     latitud: perfil.latitud,
@@ -28,7 +28,7 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
       setFormData({
         nombre_completo: perfil.nombre_completo || '',
         rfc: perfil.rfc || '',
-        direccion_fiscal: perfil.direccion_fiscal || '',
+        direccion: perfil.direccion || perfil.direccion_fiscal || '',
         telefono: perfil.telefono || '',
         email: perfil.email || '',
         latitud: perfil.latitud,
@@ -134,12 +134,12 @@ const ModalEditarContribuyente: React.FC<ModalEditarContribuyenteProps> = ({ isO
               </div>
 
               <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección Fiscal</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección Fiscal / Residencia</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-4 text-slate-400" size={16} />
                   <textarea
-                    name="direccion_fiscal"
-                    value={formData.direccion_fiscal}
+                    name="direccion"
+                    value={formData.direccion}
                     onChange={handleChange}
                     rows={3}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all resize-none font-medium text-slate-700"

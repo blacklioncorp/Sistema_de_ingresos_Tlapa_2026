@@ -1,19 +1,20 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  Users, 
-  UserCog, 
-  FileText, 
-  LogOut, 
-  Droplet, 
-  Map, 
+import {
+  Home,
+  Users,
+  UserCog,
+  FileText,
+  LogOut,
+  Droplet,
+  Map,
   Store,
   ChevronRight,
   Menu,
   X,
-  Tag
+  Tag,
+  Globe
 } from 'lucide-react';
 import { Usuario } from '../types';
 
@@ -44,6 +45,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/contribuyentes', label: 'Contribuyentes', icon: Users, adminOnly: false },
     { path: '/cajeros', label: 'Cajeros', icon: UserCog, adminOnly: true },
     { path: '/admin/conceptos', label: 'Conceptos de Cobro', icon: Tag, adminOnly: true },
+    { path: '/admin/mapa', label: 'Mapa de Cobertura', icon: Globe, adminOnly: true },
     { path: '/reporte', label: 'Recaudación', icon: FileText, adminOnly: true },
     { type: 'header', label: 'Módulos de Cobro' },
     { path: '/modulo-agua', label: 'Agua Potable', icon: Droplet, adminOnly: false, permiso: 'agua' },
@@ -56,9 +58,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       <div className="p-6 border-b border-emerald-900/50">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-inner overflow-hidden">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1Yc5hGNVkFDwXbld_sUq2V5ZNhjMc7sgb" 
-              alt="Logo Tlapa" 
+            <img
+              src="https://lh3.googleusercontent.com/d/1Yc5hGNVkFDwXbld_sUq2V5ZNhjMc7sgb"
+              alt="Logo Tlapa"
               className="w-10 h-10 object-contain"
             />
           </div>
@@ -74,14 +76,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
           if (item.type === 'header') {
             return <p key={idx} className="text-[11px] font-bold text-emerald-500 uppercase px-4 mb-2 mt-4 first:mt-0">{item.label}</p>;
           }
-          
+
           if (item.adminOnly && user.rol !== 'admin') return null;
           if (item.permiso && !user.permisos[item.permiso as keyof typeof user.permisos]) return null;
 
           return (
-            <Link 
+            <Link
               key={idx}
-              to={item.path!} 
+              to={item.path!}
               onClick={closeMobileMenu}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(item.path!) ? 'bg-emerald-800 text-white shadow-lg' : 'text-emerald-200 hover:bg-emerald-900/50'}`}
             >
@@ -93,7 +95,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       </nav>
 
       <div className="p-4 border-t border-emerald-900/50">
-        <button 
+        <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-red-300 hover:bg-red-900/40 hover:text-red-200 transition-all font-medium text-sm"
         >
@@ -107,7 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
   return (
     <div className="flex min-h-screen bg-slate-50">
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm z-[60] lg:hidden"
           onClick={closeMobileMenu}
         ></div>
@@ -124,7 +126,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       <main className="flex-1 lg:ml-72 min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
             >

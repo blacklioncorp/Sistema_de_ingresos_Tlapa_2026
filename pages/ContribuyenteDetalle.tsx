@@ -313,11 +313,11 @@ const ContribuyenteDetalle: React.FC = () => {
             <div className="mt-8 space-y-3">
               <div className="flex gap-3 items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100/50">
                 <MapPin size={14} className="text-slate-400" />
-                <p className="text-[10px] text-slate-500 font-medium text-left leading-relaxed">{perfil.direccion || perfil.direccion_fiscal}</p>
+                <p className="text-[10px] text-slate-500 font-medium text-left leading-relaxed">{perfil.direccion || perfil.direccion_fiscal || 'Sin Dirección Registrada'}</p>
               </div>
               <div className="flex gap-3 items-center p-3.5 bg-slate-50 rounded-2xl border border-slate-100/50">
                 <Phone size={14} className="text-slate-400" />
-                <p className="text-xs text-slate-600 font-bold">{perfil.telefono}</p>
+                <p className="text-xs text-slate-600 font-bold">{perfil.telefono || 'Sin Teléfono Registrado'}</p>
               </div>
             </div>
 
@@ -494,6 +494,11 @@ const ContribuyenteDetalle: React.FC = () => {
                             {toma.estado !== 'cancelado' && <PaymentStatusBadge alCorriente={et?.al_corriente ?? (loadingEstado ? null : undefined)} />}
                           </div>
                           <p className="text-xs text-slate-500">{toma.direccion_toma}</p>
+                          {toma.ultimo_pago_historico && (
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                              Último Pago Historico: <span className="text-slate-600">{toma.ultimo_pago_historico}</span>
+                            </p>
+                          )}
                         </div>
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           {toma.estado !== 'cancelado' && (

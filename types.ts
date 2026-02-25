@@ -42,6 +42,7 @@ export interface TomaAgua {
   tipo_servicio: string;
   latitud?: number;
   longitud?: number;
+  ultimo_pago_historico?: string;
   deudas: DeudaItem[];
   estado?: 'activo' | 'pausado' | 'cancelado';
 }
