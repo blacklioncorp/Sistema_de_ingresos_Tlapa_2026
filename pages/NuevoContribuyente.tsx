@@ -116,20 +116,11 @@ const NuevoContribuyente: React.FC = () => {
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Dirección Fiscal / Domicilio</label>
-              <textarea
-                rows={3}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-700 transition-all resize-none font-medium"
-                placeholder="Calle, Número, Colonia, C.P."
-                value={formData.direccion}
-                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-              />
-            </div>
-
-            <div className="md:col-span-2 space-y-2">
               <MapPicker
-                height="220px"
-                onLocationSelect={(coords) => setFormData({ ...formData, latitud: coords.lat, longitud: coords.lng })}
+                height="320px"
+                onLocationSelect={(coords, address) => 
+                  setFormData(prev => ({ ...prev, latitud: coords.lat, longitud: coords.lng, direccion: address }))
+                }
               />
             </div>
           </div>

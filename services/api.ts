@@ -1,7 +1,9 @@
 // API Client Service
 // Responsable de todas las comunicaciones HTTP con el Servidor Node
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Cliente de API - Responsable de todas las comunicaciones HTTP con el Servidor Node
+// En producción, VITE_API_URL debe apuntar a la IP pública o dominio del servidor municipal.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * Realiza las peticiones al servidor, centralizando el manejo de errores.
@@ -17,6 +19,16 @@ async function fetchClient(endpoint: string, options: RequestInit = {}) {
                 ...options.headers,
             },
         });
+
+        // Detectar expiración de token (401 o 403)
+        if (response.status === 401 || response.status === 403) {
+            // No disparamos el evento si es el endpoint de login (credenciales incorrectas)
+            if (!endpoint.includes('/auth/login')) {
+                window.dispatchEvent(new CustomEvent('auth-error', { 
+                    detail: { message: 'Tu sesión ha expirado por seguridad.' } 
+                }));
+            }
+        }
 
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Error en la petición');

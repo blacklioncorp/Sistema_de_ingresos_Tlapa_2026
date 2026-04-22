@@ -13,6 +13,9 @@ import ModuloPago from './pages/ModuloPago';
 import Reportes from './pages/Reportes';
 import { Usuario } from './types';
 import { api } from './services/api';
+import { APIProvider } from '@vis.gl/react-google-maps';
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCx0zWn5TIp1Fr8M0DrPKVyDHsMcsa8UOc';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<Usuario | null>(() => {
@@ -46,6 +49,17 @@ const App: React.FC = () => {
     localStorage.removeItem('tlapa_user');
     localStorage.removeItem('tlapa_token');
   };
+
+  // Escuchar errores de autenticación globales (ej. token expirado)
+  useEffect(() => {
+    const handleAuthError = (e: any) => {
+      handleLogout();
+      setLoginError(e.detail?.message || 'Sesión expirada');
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+    return () => window.removeEventListener('auth-error', handleAuthError);
+  }, []);
 
   if (!user) {
     return (
@@ -113,26 +127,28 @@ const App: React.FC = () => {
   }
 
   return (
-    <HashRouter>
-      <Layout user={user} onLogout={handleLogout}>
-        <Routes>
-          <Route path="/" element={<Dashboard user={user} />} />
-          <Route path="/contribuyentes" element={<Contribuyentes />} />
-          <Route path="/contribuyentes/nuevo" element={user.rol === 'admin' ? <NuevoContribuyente /> : <Navigate to="/contribuyentes" />} />
-          <Route path="/contribuyentes/:id" element={<ContribuyenteDetalle />} />
-          <Route path="/cajeros" element={user.rol === 'admin' ? <Cajeros /> : <Navigate to="/" />} />
-          <Route path="/admin/conceptos" element={user.rol === 'admin' ? <AdminConceptos /> : <Navigate to="/" />} />
-          <Route path="/admin/mapa" element={user.rol === 'admin' ? <MapaCobertura /> : <Navigate to="/" />} />
-          <Route path="/reporte" element={user.rol === 'admin' ? <Reportes /> : <Navigate to="/" />} />
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+      <HashRouter>
+        <Layout user={user} onLogout={handleLogout}>
+          <Routes>
+            <Route path="/" element={<Dashboard user={user} />} />
+            <Route path="/contribuyentes" element={<Contribuyentes />} />
+            <Route path="/contribuyentes/nuevo" element={user.rol === 'admin' ? <NuevoContribuyente /> : <Navigate to="/contribuyentes" />} />
+            <Route path="/contribuyentes/:id" element={<ContribuyenteDetalle />} />
+            <Route path="/cajeros" element={user.rol === 'admin' ? <Cajeros /> : <Navigate to="/" />} />
+            <Route path="/admin/conceptos" element={user.rol === 'admin' ? <AdminConceptos /> : <Navigate to="/" />} />
+            <Route path="/admin/mapa" element={user.rol === 'admin' ? <MapaCobertura /> : <Navigate to="/" />} />
+            <Route path="/reporte" element={user.rol === 'admin' ? <Reportes /> : <Navigate to="/" />} />
 
-          {user.permisos.agua && <Route path="/modulo-agua" element={<ModuloPago tipo="agua" />} />}
-          {user.permisos.catastro && <Route path="/modulo-catastro" element={<ModuloPago tipo="catastro" />} />}
-          {user.permisos.comercio && <Route path="/modulo-comercio" element={<ModuloPago tipo="comercio" />} />}
+            {user.permisos.agua && <Route path="/modulo-agua" element={<ModuloPago tipo="agua" />} />}
+            {user.permisos.catastro && <Route path="/modulo-catastro" element={<ModuloPago tipo="catastro" />} />}
+            {user.permisos.comercio && <Route path="/modulo-comercio" element={<ModuloPago tipo="comercio" />} />}
 
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </Layout>
-    </HashRouter>
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Layout>
+      </HashRouter>
+    </APIProvider>
   );
 };
 
