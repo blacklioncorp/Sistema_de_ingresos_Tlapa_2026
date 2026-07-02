@@ -47,8 +47,8 @@ export const db = {
         const client = await pool.connect();
         return {
             beginTransaction: () => client.query('BEGIN'),
-            commit: async () => { await client.query('COMMIT'); client.release(); },
-            rollback: async () => { await client.query('ROLLBACK'); client.release(); },
+            commit: async () => { await client.query('COMMIT'); },
+            rollback: async () => { await client.query('ROLLBACK'); },
             query: (sql, params) => executeQuery(client, sql, params),
             release: () => client.release()
         };

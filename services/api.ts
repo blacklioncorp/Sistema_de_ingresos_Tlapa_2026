@@ -144,5 +144,13 @@ export const api = {
     }),
 
     // --- Mapa de Cobertura ---
-    obtenerCobertura: () => fetchClient('/mapa/cobertura')
+    obtenerCobertura: () => fetchClient('/mapa/cobertura'),
+
+    // --- Kiosco y Referencias ---
+    buscarAdeudosKiosco: (query: string) => fetchClient(`/kiosco/buscar?query=${encodeURIComponent(query)}`),
+    crearReferenciaKiosco: (payload: { contribuyente_id: number; monto_total: number; carrito: any[] }) => fetchClient('/kiosco/referencia', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }),
+    getReferenciaKiosco: (folio: string) => fetchClient(`/kiosco/referencia/${encodeURIComponent(folio)}`)
 };

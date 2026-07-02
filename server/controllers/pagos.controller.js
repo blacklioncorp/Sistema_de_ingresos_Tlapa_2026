@@ -1,11 +1,19 @@
 import { db } from '../config/db.js';
 
 export const procesarPago = async (req, res) => {
-    const { cajero_id, contribuyente_id, monto_total, notas, carrito } = req.body;
+    const { cajero_id, contribuyente_id, monto_total, notas, carrito, referencia_folio } = req.body;
     const connection = await db.getConnection();
 
     try {
         await connection.beginTransaction();
+
+        // Si viene un folio de referencia del kiosco, actualizar su estado a 'pagado'
+        if (referencia_folio) {
+            await connection.query(
+                "UPDATE referencias_pago SET estado = 'pagado' WHERE folio = ?",
+                [referencia_folio]
+            );
+        }
 
         const [pagoResult] = await connection.query(
             "INSERT INTO pagos (cajero_id, contribuyente_id, monto_total, notas) VALUES (?, ?, ?, ?)",

@@ -11,6 +11,7 @@ import AdminConceptos from './pages/AdminConceptos';
 import MapaCobertura from './pages/MapaCobertura';
 import ModuloPago from './pages/ModuloPago';
 import Reportes from './pages/Reportes';
+import Kiosco from './pages/Kiosco';
 import { Usuario } from './types';
 import { api } from './services/api';
 import { APIProvider } from '@vis.gl/react-google-maps';
@@ -60,6 +61,21 @@ const App: React.FC = () => {
     window.addEventListener('auth-error', handleAuthError);
     return () => window.removeEventListener('auth-error', handleAuthError);
   }, []);
+
+  const isKioskMode = window.location.hash.includes('/kiosco');
+
+  if (isKioskMode) {
+    return (
+      <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+        <HashRouter>
+          <Routes>
+            <Route path="/kiosco" element={<Kiosco />} />
+            <Route path="*" element={<Navigate to="/kiosco" />} />
+          </Routes>
+        </HashRouter>
+      </APIProvider>
+    );
+  }
 
   if (!user) {
     return (

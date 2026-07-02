@@ -28,6 +28,10 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
   const [anioFiscal, setAnioFiscal] = useState<number>(new Date().getFullYear());
   const [mesFiscal, setMesFiscal] = useState<number>(new Date().getMonth() + 1);
 
+  const [refQuery, setRefQuery] = useState('');
+  const [loadingRef, setLoadingRef] = useState(false);
+  const [referenciaFolioAplicada, setReferenciaFolioAplicada] = useState<string | null>(null);
+
   const config = {
     agua: { title: 'Agua Potable', icon: Droplet, color: 'text-blue-600', bg: 'bg-blue-50', accent: 'blue' },
     catastro: { title: 'Catastro', icon: Map, color: 'text-emerald-700', bg: 'bg-emerald-50', accent: 'emerald' },
@@ -78,10 +82,49 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
       const resp = await api.getContribuyentePorId(id);
       setPerfil(resp.perfil);
       setCargosEnSesion([]);
+      setReferenciaFolioAplicada(null);
     } catch (err: any) {
       alert("Error al cargar el expediente del contribuyente.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBuscarReferencia = async (folioToSearch = refQuery) => {
+    if (!folioToSearch) return;
+    setLoadingRef(true);
+    try {
+      const resp = await api.getReferenciaKiosco(folioToSearch);
+      if (resp.success) {
+        const { referencia } = resp;
+        
+        // Cargar el perfil del contribuyente completo
+        const respPerfil = await api.getContribuyentePorId(referencia.contribuyente_id);
+        setPerfil(respPerfil.perfil);
+
+        // Mapear detalles de referencia al carrito
+        const cargosMapeados = referencia.detalles.map((d: any) => ({
+          id: Math.floor(Math.random() * 100000),
+          descripcion: d.nombre,
+          monto: parseFloat(d.monto),
+          estado: 'pendiente',
+          fecha_vencimiento: new Date().toISOString().split('T')[0],
+          activoRef: d.activo_ref !== 'general' ? d.activo_ref : undefined,
+          concepto_id: d.concepto_id,
+          frecuencia: d.frecuencia,
+          anio_fiscal: d.anio_fiscal,
+          mes_fiscal: d.mes_fiscal
+        }));
+
+        setCargosEnSesion(cargosMapeados);
+        setReferenciaFolioAplicada(referencia.folio);
+        setRefQuery('');
+        setResultadosBusqueda([]);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error al buscar la referencia.');
+    } finally {
+      setLoadingRef(false);
     }
   };
 
@@ -165,7 +208,10 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
         cajero_id: user.id,
         contribuyente_id: perfil.id,
         monto_total: totalPagar,
-        notas: `Pago procesado en módulo ${title}`,
+        notas: referenciaFolioAplicada 
+          ? `Pago de Referencia Kiosco #${referenciaFolioAplicada} procesado en módulo ${title}` 
+          : `Pago procesado en módulo ${title}`,
+        referencia_folio: referenciaFolioAplicada || undefined,
         carrito: cargosEnSesion.map(c => ({
           concepto_id: c.concepto_id || conceptosDisponibles[0]?.id || 1,
           monto: c.monto,
@@ -179,6 +225,7 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
       const resp = await api.procesarPago(payload);
       alert(`¡Pago exitoso! Folio BBDD: ${resp.folio}`);
       setCargosEnSesion([]);
+      setReferenciaFolioAplicada(null);
     } catch (err: any) {
       alert(err.message || 'Error procesando el cobro en el servidor');
     } finally {
@@ -211,7 +258,40 @@ const ModuloPago: React.FC<ModuloPagoProps> = ({ tipo }) => {
         </div>
       </div>
 
-      <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 relative">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 relative space-y-6">
+        {/* BUSCADOR DE REFERENCIA DE KIOSCO */}
+        <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex items-center gap-3 text-emerald-800 flex-shrink-0">
+            <Printer size={22} className="text-emerald-700" />
+            <div>
+              <p className="text-sm font-bold">Escanear Ticket de Kiosco</p>
+              <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">Lector de Código de Barras / QR</p>
+            </div>
+          </div>
+          <div className="relative flex-1 w-full">
+            <input
+              type="text"
+              placeholder="Escanee o ingrese el folio de la referencia (ej. 260701...)"
+              className="w-full px-4 py-3 bg-white border border-emerald-250 rounded-xl focus:outline-none focus:ring-4 focus:ring-emerald-500/15 font-mono font-bold text-slate-800 text-sm"
+              value={refQuery}
+              onChange={(e) => setRefQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleBuscarReferencia()}
+            />
+          </div>
+          <button
+            onClick={() => handleBuscarReferencia()}
+            disabled={loadingRef || !refQuery}
+            className="w-full sm:w-auto px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs uppercase tracking-wider font-bold rounded-xl disabled:opacity-50 transition-all active:scale-95"
+          >
+            {loadingRef ? 'Buscando...' : 'Cargar Referencia'}
+          </button>
+        </div>
+
+        <div className="relative flex items-center justify-center shrink-0">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-150"></div></div>
+          <span className="relative px-4 bg-white text-xs font-bold text-slate-400 uppercase tracking-widest">O Buscar Contribuyente Manualmente</span>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />

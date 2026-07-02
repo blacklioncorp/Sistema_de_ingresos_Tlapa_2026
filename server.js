@@ -10,6 +10,7 @@ import cajerosRoutes from './server/routes/cajeros.routes.js';
 import pagosRoutes from './server/routes/pagos.routes.js';
 import activosRoutes from './server/routes/activos.routes.js';
 import mapaRoutes from './server/routes/mapa.routes.js';
+import kioscoRoutes from './server/routes/kiosco.routes.js';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api/cajeros', cajerosRoutes);
 app.use('/api/pagos', pagosRoutes);
 app.use('/api/activos', activosRoutes);
 app.use('/api/mapa', mapaRoutes);
+app.use('/api/kiosco', kioscoRoutes);
 
 import { startSyncWorker } from './server/sync-worker.js';
 
