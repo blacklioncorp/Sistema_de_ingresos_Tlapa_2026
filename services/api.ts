@@ -15,6 +15,7 @@ async function fetchClient(endpoint: string, options: RequestInit = {}) {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true', // Evita que ngrok muestre la pantalla de advertencia que bloquea CORS
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                 ...options.headers,
             },
